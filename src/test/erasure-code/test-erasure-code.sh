@@ -27,7 +27,7 @@ function run() {
 
     setup $dir || return 1
     run_mon $dir a --public-addr 127.0.0.1 || return 1
-    for id in $(seq 0 4) ; do
+    for id in $(seq 0 10) ; do
         run_osd $dir $id || return 1
     done
     create_erasure_coded_pool ecpool || return 1
@@ -64,12 +64,26 @@ function rados_put_get() {
     local payload=ABC
     echo "$payload" > $dir/ORIGINAL
 
+    #
+    # get and put an object, compare they are equal
+    #
     ./rados --pool $poolname put SOMETHING $dir/ORIGINAL || return 1
     ./rados --pool $poolname get SOMETHING $dir/COPY || return 1
+    diff $dir/ORIGINAL $dir/COPY || return 1
+    rm $dir/COPY
 
+    #
+    # take out the first OSD used to store the object and
+    # check the object can still be retrieved, which implies
+    # recovery
+    #
+    local -a initial_osds=($(get_osds $poolname SOMETHING))
+    ./ceph osd out ${initial_osds[0]} || return 1
+    ! get_osds $poolname SOMETHING | grep '\<'${initial_osds[0]}'\>' || return 1
+    ./rados --pool $poolname get SOMETHING $dir/COPY || return 1
     diff $dir/ORIGINAL $dir/COPY || return 1
 
-    rm $dir/ORIGINAL $dir/COPY
+    rm $dir/ORIGINAL
 }
 
 function plugin_exists() {
@@ -86,6 +100,41 @@ function plugin_exists() {
     fi
     ./ceph osd erasure-code-profile rm TESTPROFILE 
     return $status
+}
+
+function TEST_rados_put_get_LRC_advanced() {
+    local dir=$1
+    local poolname=pool-LRC
+
+    ./ceph osd erasure-code-profile set profile-LRC \
+        plugin=LRC \
+        mapping=DD_ \
+        ruleset-steps='[ [ "chooseleaf", "osd", 0 ] ]' \
+        layers='[ [ "DDc", "" ] ]'  || return 1
+    ./ceph osd pool create $poolname 12 12 erasure profile-LRC \
+        || return 1
+
+    rados_put_get $dir $poolname || return 1
+
+    delete_pool $poolname
+    ./ceph osd erasure-code-profile rm profile-LRC
+}
+
+function TEST_rados_put_get_LRC_kml() {
+    local dir=$1
+    local poolname=pool-LRC
+
+    ./ceph osd erasure-code-profile set profile-LRC \
+        plugin=LRC \
+        k=4 m=2 l=3 \
+        ruleset-failure-domain=osd || return 1
+    ./ceph osd pool create $poolname 12 12 erasure profile-LRC \
+        || return 1
+
+    rados_put_get $dir $poolname || return 1
+
+    delete_pool $poolname
+    ./ceph osd erasure-code-profile rm profile-LRC
 }
 
 function TEST_rados_put_get_isa() {
