@@ -243,18 +243,21 @@ class MonitorDBStore
       f->close_section();
     }
   };
+  typedef ceph::shared_ptr<Transaction> TransactionRef;
 
-  int apply_transaction(const MonitorDBStore::Transaction& t) {
+  int apply_transaction(MonitorDBStore::TransactionRef t) {
     KeyValueDB::Transaction dbt = db->get_transaction();
 
     if (do_dump) {
       bufferlist bl;
-      t.encode(bl);
+      t->encode(bl);
       bl.write_fd(dump_fd);
     }
 
     list<pair<string, pair<string,string> > > compact;
-    for (list<Op>::const_iterator it = t.ops.begin(); it != t.ops.end(); ++it) {
+    for (list<Op>::const_iterator it = t->ops.begin();
+	 it != t->ops.end();
+	 ++it) {
       const Op& op = *it;
       switch (op.type) {
       case Transaction::OP_PUT:

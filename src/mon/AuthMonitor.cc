@@ -189,8 +189,8 @@ void AuthMonitor::update_from_paxos(bool *need_bootstrap)
     mon->key_server.set_ver(keys_ver);
 
     if (keys_ver == 1 && mon->is_keyring_required()) {
-      MonitorDBStore::Transaction t;
-      t.erase("mkfs", "keyring");
+      MonitorDBStore::TransactionRef t(new MonitorDBStore::Transaction);
+      t->erase("mkfs", "keyring");
       mon->store->apply_transaction(t);
     }
   }

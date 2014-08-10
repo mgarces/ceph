@@ -884,16 +884,16 @@ public:
     }
 
     void _mark_convert_start() {
-      MonitorDBStore::Transaction tx;
-      tx.put("mon_convert", "on_going", 1);
+      MonitorDBStore::TransactionRef tx(new MonitorDBStore::Transaction);
+      tx->put("mon_convert", "on_going", 1);
       db->apply_transaction(tx);
     }
 
     void _convert_finish_features(MonitorDBStore::Transaction &t);
     void _mark_convert_finish() {
-      MonitorDBStore::Transaction tx;
-      tx.erase("mon_convert", "on_going");
-      _convert_finish_features(tx);
+      MonitorDBStore::TransactionRef tx(new MonitorDBStore::Transaction);
+      tx->erase("mon_convert", "on_going");
+      _convert_finish_features(*tx);
       db->apply_transaction(tx);
     }
 

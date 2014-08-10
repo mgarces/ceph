@@ -140,11 +140,11 @@ void PaxosService::remove_legacy_versions()
   dout(10) << __func__ << " conversion_first " << cf
 	   << " first committed " << fc << dendl;
 
-  MonitorDBStore::Transaction t;
+  MonitorDBStore::TransactionRef t(new MonitorDBStore::Transaction);
   if (cf < fc) {
-    trim(&t, cf, fc);
+    trim(&*t, cf, fc);
   }
-  t.erase(get_service_name(), "conversion_first");
+  t->erase(get_service_name(), "conversion_first");
   mon->store->apply_transaction(t);
 }
 

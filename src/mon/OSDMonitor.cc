@@ -174,8 +174,8 @@ void OSDMonitor::update_from_paxos(bool *need_bootstrap)
     // state, and we shouldn't want to work around it without knowing what
     // exactly happened.
     assert(latest_full > 0);
-    MonitorDBStore::Transaction t;
-    put_version_latest_full(&t, latest_full);
+    MonitorDBStore::TransactionRef t(new MonitorDBStore::Transaction);
+    put_version_latest_full(&*t, latest_full);
     mon->store->apply_transaction(t);
     dout(10) << __func__ << " updated the on-disk full map version to "
              << latest_full << dendl;
@@ -190,7 +190,7 @@ void OSDMonitor::update_from_paxos(bool *need_bootstrap)
   }
 
   // walk through incrementals
-  MonitorDBStore::Transaction *t = NULL;
+  MonitorDBStore::TransactionRef t;
   size_t tx_size = 0;
   while (version > osdmap.epoch) {
     bufferlist inc_bl;
@@ -203,8 +203,8 @@ void OSDMonitor::update_from_paxos(bool *need_bootstrap)
     err = osdmap.apply_incremental(inc);
     assert(err == 0);
 
-    if (t == NULL)
-      t = new MonitorDBStore::Transaction;
+    if (!t)
+      t.reset(new MonitorDBStore::Transaction);
 
     // Write out the full map for all past epochs.  Encode the full
     // map with the same features as the incremental.  If we don't
@@ -219,8 +219,8 @@ void OSDMonitor::update_from_paxos(bool *need_bootstrap)
     osdmap.encode(full_bl, f);
     tx_size += full_bl.length();
 
-    put_version_full(t, osdmap.epoch, full_bl);
-    put_version_latest_full(t, osdmap.epoch);
+    put_version_full(&*t, osdmap.epoch, full_bl);
+    put_version_latest_full(&*t, osdmap.epoch);
 
     // share
     dout(1) << osdmap << dendl;
@@ -230,16 +230,14 @@ void OSDMonitor::update_from_paxos(bool *need_bootstrap)
     }
 
     if (tx_size > g_conf->mon_sync_max_payload_size*2) {
-      mon->store->apply_transaction(*t);
-      delete t;
-      t = NULL;
+      mon->store->apply_transaction(t);
+      t = MonitorDBStore::TransactionRef();
       tx_size = 0;
     }
   }
 
-  if (t != NULL) {
-    mon->store->apply_transaction(*t);
-    delete t;
+  if (t) {
+    mon->store->apply_transaction(t);
   }
 
   for (int o = 0; o < osdmap.get_max_osd(); o++) {
