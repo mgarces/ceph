@@ -2,6 +2,52 @@
 Locally repairable erasure code plugin
 ======================================
 
+With the *jerasure* plugin, when an erasure coded object is stored on
+multiple OSDs, recovering from the loss of one OSD requires reading
+from all the others. For instance if *jerasure* is configured with
+*k=8* and *m=4*, losing one OSD requires reading from the eleven
+others to repair. 
+
+The *LRC* erasure code plugin creates local parity chunks to be able
+to recover using less OSDs. For instance if *LRC* is configured with
+*k=8*, *m=4* and *l=4*, it will create an additional parity chunk for
+every four OSDs. When a single OSD is lost, it can be recovered with
+only four OSDs instead of eleven. 
+
+Erasure code profile examples
+=============================
+
+Reduce recovery bandwidth between hosts
+---------------------------------------
+
+Although it is probably not an interesting use case when all hosts are
+connected to the same switch, reduced bandwidth usage can actually be
+observed.::
+
+        $ ceph osd erasure-code-profile set LRCprofile \
+             plugin=LRC \
+             k=4 m=2 l=3 \
+             ruleset-failure-domain=host
+        $ ceph osd pool create lrcpool 12 12 erasure LRCprofile
+
+
+Reduce recovery bandwidth between racks
+---------------------------------------
+
+In Firefly the reduced bandwidth will only be observed if the primary
+OSD is in the same rack as the lost chunk.::
+
+        $ ceph osd erasure-code-profile set LRCprofile \
+             plugin=LRC \
+             k=4 m=2 l=3 \
+             ruleset-locality=rack \
+             ruleset-failure-domain=host
+        $ ceph osd pool create lrcpool 12 12 erasure LRCprofile
+
+
+Advanced plugin configuration
+=============================
+
 The *LRC* erasure code plugin recursively applies erasure code
 techniques so that recovering from the loss of some chunks only
 require a subset of the available chunks, most of the time.
@@ -19,13 +65,13 @@ loss of chun *2* chunk can be recovered with the first four
 chunks. This reduces the network bandwidth required to recover from
 the loss of one chunk (which is the most frequent case) by 50%.
 
-Erasure code profile examples
-=============================
+Erasure code profile examples using low level configuration
+===========================================================
 
 Minimal testing
 ---------------
 
-It is strictly equivalent to using the default profile. The *DD*
+It is strictly equivalent to using the default erasure code profile. The *DD*
 implies *K=2*, the *c* implies *M=1* and the *jerasure* plugin is used
 by default.::
 
