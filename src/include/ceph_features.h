@@ -53,6 +53,10 @@
 #define CEPH_FEATURE_MSGR_KEEPALIVE2   (1ULL<<42)
 #define CEPH_FEATURE_OSD_POOLRESEND    (1ULL<<43)
 
+#define CEPH_FEATURE_RESERVED2 (1ULL<<61)  /* slow down, we are almost out... */
+#define CEPH_FEATURE_RESERVED  (1ULL<<62)  /* DO NOT USE THIS ... last bit! */
+#define CEPH_FEATURE_RESERVED_BROKEN  (1ULL<<63)  /* DO NOT USE THIS; see below */
+
 /*
  * The introduction of CEPH_FEATURE_OSD_SNAPMAPPER caused the feature
  * vector to evaluate to 64 bit ~0.  To cope, we designate 1ULL << 63
@@ -64,10 +68,10 @@
  * and fixed by commit
  *   4255b5c2fb54ae40c53284b3ab700fdfc7e61748 v0.65-263-g4255b5c
  */
-#define CEPH_FEATURE_RESERVED (1ULL<<63)
+#define CEPH_FEATURE_RESERVED_BROKEN (1ULL<<63)
 
 static inline unsigned long long ceph_sanitize_features(unsigned long long f) {
-	if (f & CEPH_FEATURE_RESERVED) {
+	if (f & CEPH_FEATURE_RESERVED_BROKEN) {
 		/* everything through OSD_SNAPMAPPER */
 		return 0x1ffffffffull;
 	} else {
