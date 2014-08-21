@@ -73,5 +73,19 @@ public:
 int __erasure_code_init(char *plugin_name, char *directory)
 {
   ErasureCodePluginRegistry &instance = ErasureCodePluginRegistry::instance();
+  const char *variants[] = { "sse4", "sse3", "generic" };
+  stringstream ss;
+  for (int i = 0; i < 3; i++) {
+    string variant(variants[i]);
+    ErasureCodePlugin *plugin;
+
+    int r = instance.load(plugin_name + string("_") + variant,
+			  directory, &plugin, ss);
+    if (r) {
+      derr << ss.str() << dendl;
+      return r;
+    }
+  }
+  dout(10) << ss.str() << dendl;
   return instance.add(plugin_name, new ErasureCodePluginSelectJerasure());
 }
