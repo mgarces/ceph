@@ -72,6 +72,7 @@ radosgw_SOURCES = \
 	rgw/rgw_swift_auth.cc \
 	rgw/rgw_loadgen.cc \
 	rgw/rgw_civetweb.cc \
+	rgw/rgw_civetweb_log.cc \
 	civetweb/src/civetweb.c \
 	rgw/rgw_main.cc
 radosgw_CFLAGS = -I$(srcdir)/civetweb/include
